@@ -1201,7 +1201,7 @@ void gzdir_output_pressure(struct All_variables *E, int cycles)
 
 void gzdir_output_tracer(struct All_variables *E, int cycles)
 {
-  int i, j, n, ncolumns;
+  int i, j, ncolumns;
   char output_file[255];
   gzFile fp1;
   long int n;
