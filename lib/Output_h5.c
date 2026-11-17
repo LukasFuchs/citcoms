@@ -1591,6 +1591,7 @@ void h5output_meta(struct All_variables *E)
     status = set_attribute_float_vector(input, "viscE", n, E->viscosity.E);
     status = set_attribute_float_vector(input, "viscT", n, E->viscosity.T);
     status = set_attribute_float_vector(input, "viscZ", n, E->viscosity.Z);
+    status = set_attribute_float_vector(input, "viscTe", n, E->viscosity.Te);
 
     status = set_attribute_int(input, "SDEPV", E->viscosity.SDEPV);
     status = set_attribute_float(input, "sdepv_misfit", E->viscosity.sdepv_misfit);

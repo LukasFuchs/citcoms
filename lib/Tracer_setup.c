@@ -61,7 +61,7 @@ void expand_later_array(struct All_variables *E, int j);
 void expand_tracer_arrays(struct All_variables *E, int j);
 void tracer_post_processing(struct All_variables *E);
 void allocate_tracer_arrays(struct All_variables *E,
-                            int j, int number_of_tracers);
+                             int j, long int number_of_tracers);
 void count_tracers_of_flavors(struct All_variables *E);
 
 int full_icheck_cap(struct All_variables *E, int icap,
@@ -74,12 +74,11 @@ static void predict_tracers(struct All_variables *E);
 static void correct_tracers(struct All_variables *E);
 static void strain_tracers(struct All_variables *E);
 static void make_tracer_array(struct All_variables *E);
-static void generate_random_tracers(struct All_variables *E,
-                                    int tracers_cap, int j);
+void generate_random_tracers(struct All_variables *E, long int tracers_cap, int j);
 static void read_tracer_file(struct All_variables *E);
 static void read_old_tracer_file(struct All_variables *E);
 static void check_sum(struct All_variables *E);
-static int isum_tracers(struct All_variables *E);
+static long int isum_tracers(struct All_variables *E);
 static void init_tracer_flavors(struct All_variables *E);
 static void reduce_tracer_arrays(struct All_variables *E);
 static void put_away_later(struct All_variables *E, int j, int it);
@@ -321,7 +320,8 @@ static void strain_tracers(struct All_variables *E)
 {
   float *eedot,*etemp,*eyield;
   float min_strain,max_strain,H,eta1,zcrit,ra,eps,yfac,zzz,dr,tsol;
-  int i,j,m,numtracers,nelem,l;
+  int i,m,nelem,l;
+  long int numtracers,j;
   const int nel = E->lmesh.nel;
   double dt; 
 
@@ -519,9 +519,9 @@ void tracer_post_processing(struct All_variables *E)
 static void predict_tracers(struct All_variables *E)
 {
 
-    int numtracers;
+  long int numtracers;
     int j;
-    int kk;
+    long int kk;
     int nelem;
 
     double dt;
@@ -697,11 +697,11 @@ static void find_tracers(struct All_variables *E)
 {
 
     int iel;
-    int kk;
+    long int kk;
     int j;
     int it;
     int iprevious_element;
-    int num_tracers;
+    long int num_tracers;
 
     double theta,phi,rad;
     double x,y,z;
@@ -821,8 +821,9 @@ static void find_tracers(struct All_variables *E)
 void count_tracers_of_flavors(struct All_variables *E)
 {
 
-    int j, flavor, e, kk;
-    int numtracers;
+  int j, flavor, e;
+  long int kk;
+    long int numtracers;
 
     for (j=1; j<=E->sphere.caps_per_proc; j++) {
 
@@ -879,9 +880,9 @@ void initialize_tracers(struct All_variables *E)
     /* total number of tracers  */
 
     E->trace.ilast_tracer_count = isum_tracers(E);
-    fprintf(E->trace.fpt, "Sum of Tracers: %d\n", E->trace.ilast_tracer_count);
+    fprintf(E->trace.fpt, "Sum of Tracers: %li\n", (long int)E->trace.ilast_tracer_count);
     if(E->parallel.me==0)
-        fprintf(stderr, "Sum of Tracers: %d\n", E->trace.ilast_tracer_count);
+      fprintf(stderr, "Sum of Tracers: %li\n", (long int) E->trace.ilast_tracer_count);
 
 
     /* find elements */
@@ -905,7 +906,7 @@ void initialize_tracers(struct All_variables *E)
 static void make_tracer_array(struct All_variables *E)
 {
 
-    int tracers_cap;
+  long int tracers_cap;
     int j;
     double processor_fraction;
 
@@ -918,12 +919,12 @@ static void make_tracer_array(struct All_variables *E)
     for (j=1;j<=E->sphere.caps_per_proc;j++) {
 
         processor_fraction=E->lmesh.volume/E->mesh.volume;
-        tracers_cap=E->mesh.nel*E->trace.itperel*processor_fraction;
+        tracers_cap=(long int)(((double)E->mesh.nel)*((double)E->trace.itperel)*processor_fraction);
         /*
           fprintf(stderr,"AA: proc frac: %f (%d) %d %d %f %f\n",processor_fraction,tracers_cap,E->lmesh.nel,E->parallel.nprocz, E->sx[j][3][E->lmesh.noz],E->sx[j][3][1]);
         */
 
-        fprintf(E->trace.fpt,"\nGenerating %d Tracers\n",tracers_cap);
+        fprintf(E->trace.fpt,"\nGenerating %i Tracers %g proc frac, nel %i itperel %i\n",(int)tracers_cap,processor_fraction,E->mesh.nel,E->trace.itperel);
 
         generate_random_tracers(E, tracers_cap, j);
 
@@ -943,8 +944,8 @@ static void make_tracer_array(struct All_variables *E)
 
 
 
-static void generate_random_tracers(struct All_variables *E,
-                                    int tracers_cap, int j)
+void generate_random_tracers(struct All_variables *E,
+			     long int tracers_cap, int j)
 {
     void cart_to_sphere();
     int kk;
@@ -1055,8 +1056,8 @@ static void read_tracer_file(struct All_variables *E)
 
     int number_of_tracers, ncolumns;
     int kk;
-    int icheck;
-    int iestimate;
+    long int icheck;
+    long int iestimate;
     int icushion;
     int i, j;
 
@@ -1157,7 +1158,7 @@ static void read_tracer_file(struct All_variables *E)
 
         } /* end kk, number of tracers */
 
-        fprintf(E->trace.fpt,"Number of tracers in this cap is: %d\n",
+        fprintf(E->trace.fpt,"Number of tracers in this cap is: %ld\n",
                 E->trace.ntracers[j]);
 
         /* * debug **
@@ -1182,7 +1183,7 @@ static void read_tracer_file(struct All_variables *E)
 
     if (icheck!=number_of_tracers) {
         fprintf(E->trace.fpt,"ERROR(read_tracer_file) - tracers != number in file\n");
-        fprintf(E->trace.fpt,"Tracers in system: %d\n", icheck);
+        fprintf(E->trace.fpt,"Tracers in system: %li\n", icheck);
         fprintf(E->trace.fpt,"Tracers in file: %d\n", number_of_tracers);
         fflush(E->trace.fpt);
         exit(10);
@@ -1205,7 +1206,7 @@ static void read_old_tracer_file(struct All_variables *E)
 
     int i,j,kk,rezip;
     int idum1,ncolumns;
-    int numtracers;
+    long int numtracers;
 
     double rdum1;
     double theta,phi,rad;
@@ -1252,7 +1253,7 @@ static void read_old_tracer_file(struct All_variables *E)
 
     for(j=1;j<=E->sphere.caps_per_proc;j++) {
         fgets(input_s,200,fp1);
-        if(sscanf(input_s,"%d %d %d %lf",
+        if(sscanf(input_s,"%d %ld %d %lf",
                   &idum1, &numtracers, &ncolumns, &rdum1) != 4) {
             fprintf(stderr,"Error while reading file '%s'\n", output_file);
             exit(8);
@@ -1318,7 +1319,7 @@ static void read_old_tracer_file(struct All_variables *E)
         fflush(E->trace.fpt);
         */
 
-        fprintf(E->trace.fpt,"Read %d tracers from file %s\n",numtracers,output_file);
+        fprintf(E->trace.fpt,"Read %ld tracers from file %s\n",numtracers,output_file);
         fflush(E->trace.fpt);
 
     }
@@ -1367,19 +1368,19 @@ static void check_sum(struct All_variables *E)
 /*                                                                       */
 /* This function uses MPI to sum all tracers and returns number of them. */
 
-static int isum_tracers(struct All_variables *E)
+static long int isum_tracers(struct All_variables *E)
 {
-    int imycount;
-    int iallcount;
+  long int imycount;
+  long int iallcount;
     int j;
 
     iallcount = 0;
 
     imycount = 0;
     for (j=1; j<=E->sphere.caps_per_proc; j++)
-        imycount = imycount + E->trace.ntracers[j];
-
-    MPI_Allreduce(&imycount,&iallcount,1,MPI_INT,MPI_SUM,E->parallel.world);
+      imycount = imycount + E->trace.ntracers[j];
+    /* is MPI_LONG same as long int? hopefully */
+    MPI_Allreduce(&imycount,&iallcount,1,MPI_LONG,MPI_SUM,E->parallel.world);
 
     return iallcount;
 }
@@ -1622,7 +1623,7 @@ void get_neighboring_caps(struct All_variables *E)
 /* This function allocates memories to tracer arrays.                         */
 
 void allocate_tracer_arrays(struct All_variables *E,
-                            int j, int number_of_tracers)
+			    int j, long int number_of_tracers)
 {
 
     int kk;
@@ -1636,7 +1637,7 @@ void allocate_tracer_arrays(struct All_variables *E,
     /* make tracer arrays */
 
     if ((E->trace.ielement[j]=(int *) malloc(E->trace.max_ntracers[j]*sizeof(int)))==NULL) {
-        fprintf(E->trace.fpt,"ERROR(make tracer array)-no memory 1a\n");
+      fprintf(E->trace.fpt,"ERROR(make tracer array)-no memory 1a, %li\n",E->trace.max_ntracers[j]);
         fflush(E->trace.fpt);
         exit(10);
     }
@@ -1685,8 +1686,8 @@ void allocate_tracer_arrays(struct All_variables *E,
       }
     }
 
-    fprintf(E->trace.fpt,"Physical size of tracer arrays (max_ntracers): %d\n",
-            E->trace.max_ntracers[j]);
+    fprintf(E->trace.fpt,"Physical size of tracer arrays (max_ntracers): %i\n",
+            (int)E->trace.max_ntracers[j]);
     fflush(E->trace.fpt);
 
     return;
@@ -1699,7 +1700,7 @@ void allocate_tracer_arrays(struct All_variables *E,
 void expand_tracer_arrays(struct All_variables *E, int j)
 {
 
-    int inewsize;
+  long int inewsize;
     int kk;
     int icushion;
 
@@ -1732,7 +1733,7 @@ void expand_tracer_arrays(struct All_variables *E, int j)
     }
 
 
-    fprintf(E->trace.fpt,"Expanding physical memory of ielement, basicq, and extraq to %d from %d\n",
+    fprintf(E->trace.fpt,"Expanding physical memory of ielement, basicq, and extraq to %li from %li\n",
             inewsize,E->trace.max_ntracers[j]);
 
     E->trace.max_ntracers[j]=inewsize;
@@ -1748,7 +1749,7 @@ void expand_tracer_arrays(struct All_variables *E, int j)
 static void reduce_tracer_arrays(struct All_variables *E)
 {
 
-    int inewsize;
+  long int inewsize;
     int kk;
     int iempty_space;
     int j;
@@ -1798,7 +1799,7 @@ static void reduce_tracer_arrays(struct All_variables *E)
             }
 
 
-            fprintf(E->trace.fpt,"Reducing physical memory of ielement, basicq, and extraq to %d from %d\n",
+            fprintf(E->trace.fpt,"Reducing physical memory of ielement, basicq, and extraq to %ld from %ld\n",
                     E->trace.max_ntracers[j],inewsize);
 
             E->trace.max_ntracers[j]=inewsize;

@@ -185,6 +185,8 @@ void viscosity_system_input(struct All_variables *E)
 
       input_boolean("higher_cont_yield",&(E->control.stiff_cont),"off",m);
       input_float("cont_sig_y",&(E->viscosity.sig_c),"1e7",m);
+      input_boolean("higher_cont_yieldgrd",&(E->control.cont_grd),"off",m);
+      input_float("cont_siggr_y",&(E->viscosity.siggrd_c),"1.51e7",m);
     }
 
     /* stress state dependent weakening? 1: for damage 2: for plasticity */
@@ -1172,7 +1174,8 @@ void visc_from_P(E,EEta) /* "plasticity" implementation
 
 			 a strain-rate weakening rheology applies
 			 based on a steady state stress-strain
-			 relationship following, e.g., Tackley 1998
+			 relationship following, e.g., Tackley 1998,
+			 see below
 
 			 \eta_ett = (\sigma_y^2 \eta_0)/(\sigma_y^2 + \eta_0^2 (2 \eps_II^2))
 
@@ -1186,7 +1189,7 @@ void visc_from_P(E,EEta) /* "plasticity" implementation
      struct All_variables *E;
      float **EEta;
 {
-  float *eedot,zz[9],zzz,tau,eta_p,eta_new,tau2,eta_old,eta_old2,ss[9],sss;
+  float *eedot,zz[9],zzz,tau,eta_p,eta_new,eta_old,eta_old2,ss[9],sss;
   float fac;
   double estrain,maxD_over_gamma_cr,peak_strain_rate,scaled_strain_rate;
   int m,e,l,z,jj,kk;
@@ -1220,10 +1223,7 @@ void visc_from_P(E,EEta) /* "plasticity" implementation
   for(m=1;m<=E->sphere.caps_per_proc;m++) {
     
     if(E->viscosity.pdepv_visited){
-      if(E->viscosity.psrw)
-	strain_rate_2_inv(E,m,eedot,0);	/* get second invariant for all elements, don't take sqrt */
-      else
-	strain_rate_2_inv(E,m,eedot,1);	/* get second invariant for all elements */
+      strain_rate_2_inv(E,m,eedot,1);	/* get second invariant for all elements */
     }else{
       for(e=1;e<=nel;e++)	/* initialize with unity if no velocities around */
 	eedot[e] = 1.0;
@@ -1235,6 +1235,8 @@ void visc_from_P(E,EEta) /* "plasticity" implementation
 		(E->viscosity.psrw)?(" -- SRW"):(""));
       }
     }
+    
+
     if(!E->viscosity.psrw){
       /* 
 	 regular plasticity
@@ -1246,7 +1248,7 @@ void visc_from_P(E,EEta) /* "plasticity" implementation
 	for(kk=1;kk <= ends;kk++) {
 	  /* nodal depths */
 	  zz[kk] = (1.0 - E->sx[m][3][E->ien[m][e].node[kk]]); /* for depth, zz = 1 - r */
-	  /* how strike slip is this node? 1: pure 0: normal/extensional */ 
+	  /* how strike slip is this node? -1 compresional .... -0.25 strike slip ... 0.25 ... 1 extensional */ 
 	  if(check_stress_state){
 	    ss[kk] = compute_nodal_stress_state_factor(E,m,E->ien[m][e].node[kk]); 
 	  }
@@ -1256,11 +1258,7 @@ void visc_from_P(E,EEta) /* "plasticity" implementation
 
 	for(jj=1;jj <= vpts;jj++){ /* loop through integration points */
 	  
-	  zzz = 0.0;		/* get mean depth of integration point */
-	  if(check_stress_state)
-	    sss = 0.0;
-	  else
-	    sss = 1.0;		/* default, use full damage */
+	  zzz = sss = 0.0;		/* get mean depth of integration point */
 	  for(kk=1;kk<=ends;kk++){
 	    zzz += zz[kk] * E->N.vpt[GNVINDEX(kk,jj)];
 	    if(check_stress_state){
@@ -1274,14 +1272,19 @@ void visc_from_P(E,EEta) /* "plasticity" implementation
 	  /* min of depth dep. and constant yield stress */
 	  tau = min(tau,  E->viscosity.pdepv_y[l]);
 
-	  if(check_stress_state == 2){
+	  if(check_stress_state == 1){
+	    /* determine if we should apply full damage or not - this will apply 0...1 damage from compressional/extensional to strike slip (maxium) */
+	    sss = pow(cos(fabs(sss)*M_PI/2),2);
+	  }else if(check_stress_state == 2){
 	    /* 
-	       apply stress state to regular plasticity . 2....0.5
+	       apply stress state to regular plasticity . 2....1....0.5 from sss -1...1
 
-	     */
-	    tau *= pow(10,tanh((0.5-sss)*7)/5);
+	    */
+	    tau *= pow(10,tanh(-3.0*sss)*0.3025);
 	    sss = 1;		/* make sure all the other weakening
 				   applies */
+	  }else{
+	    sss = 1;
 	  }
 
 
@@ -1290,7 +1293,11 @@ void visc_from_P(E,EEta) /* "plasticity" implementation
              /* Tau = tau for C = 0, tau = tau_c for C = 1, and linearly in
                 between  */
              tau *= (1.0 - E->composition.comp_el[m][0][e]);
-             tau += E->composition.comp_el[m][0][e] * E->viscosity.sig_c;
+	     if(E->control.cont_grd){
+		tau += E->composition.comp_el[m][0][e] * (E->viscosity.sig_c + zzz * E->viscosity.siggrd_c );
+	     }else{
+		tau += E->composition.comp_el[m][0][e] * E->viscosity.sig_c;
+	     }
 	  }
 
 	  /* 
@@ -1474,6 +1481,8 @@ float compute_nodal_stress_state_factor(struct All_variables *E, int m, int node
 {
   float a[3][3],tnorm,state,meanh;
   int i,j;
+  const float fac = sqrt(2.)/2.;
+  
   a[0][0]=E->gstress[m][(node-1)*6+3]; /*  srr */
   a[1][1]=E->gstress[m][(node-1)*6+1]; /*  stt */
   a[2][2]=E->gstress[m][(node-1)*6+2]; /*  spp */
@@ -1491,9 +1500,12 @@ float compute_nodal_stress_state_factor(struct All_variables *E, int m, int node
 					(compressional) to 0.71
 					(extensional) in the
 					horizontal */
-  state = 1-fabs(meanh)/0.35;
-  if(state<0)
-    state = 0;
+  state = meanh/fac;
+  if(state>1)
+    state = 1;
+  if(state < -1)
+    state = -1;
+  /* -1: compression ... ~0 strike slip ... ~1 extension */
   return state;			/* 1=strike slip 0: compressional or extensional */
   
 }

@@ -804,7 +804,6 @@ void gzdir_output_visc_yield(struct All_variables *E, int cycles)
         gzprintf(gz1,"%.4e\n",E->VIY[lev][j][i]);
     }
     gzclose(gz1); 
-//    if(E->viscosity.strain_dep_plasticity){
         snprintf(output_file,255,
                  "%s/%d/sigy.%d.%d.gz", E->control.data_dir,
                  cycles,E->parallel.me, cycles);
@@ -815,7 +814,6 @@ void gzdir_output_visc_yield(struct All_variables *E, int cycles)
             gzprintf(gz2,"%.4e\n",E->SIGY[lev][j][i]);
         }
         gzclose(gz2); 
-//    }
   }else{
     if(E->output.gzdir.vtk_io == 2)
       parallel_process_sync(E);
@@ -1024,7 +1022,8 @@ void gzdir_output_stress(struct All_variables *E, int cycles)
   float *SXX[NCS],*SYY[NCS],*SXY[NCS],*SXZ[NCS],*SZY[NCS],*SZZ[NCS];
   float *divv[NCS],*vorv[NCS];
   /*  */
-  if(E->control.use_cbf_topo)	{/* for CBF topo, stress will not have been computed */
+  if(E->control.use_cbf_topo && (!E->viscosity.p_stress_state_dependent)){
+    /* for CBF topo, or special yielding, stress will not have been computed previously */
     allocate_STD_mem(E, SXX, SYY, SZZ, SXY, SXZ, SZY, divv, vorv);
     compute_nodal_stress(E, SXX, SYY, SZZ, SXY, SXZ, SZY, divv, vorv);
     free_STD_mem(E, SXX, SYY, SZZ, SXY, SXZ, SZY, divv, vorv);
@@ -1205,7 +1204,8 @@ void gzdir_output_tracer(struct All_variables *E, int cycles)
   int i, j, n, ncolumns;
   char output_file[255];
   gzFile fp1;
-
+  long int n;
+  
   snprintf(output_file,255,"%s/%d/tracer.%d.%d.gz",
 	   E->control.data_dir,cycles,
 	   E->parallel.me, cycles);
@@ -1214,8 +1214,8 @@ void gzdir_output_tracer(struct All_variables *E, int cycles)
   ncolumns = 3 + E->trace.number_of_extra_quantities;
 
   for(j=1;j<=E->sphere.caps_per_proc;j++) {
-      gzprintf(fp1,"%d %d %d %.5e\n", cycles, E->trace.ntracers[j],
-              ncolumns, E->monitor.elapsed_time);
+    gzprintf(fp1,"%d %ld %d %.5e\n", cycles, E->trace.ntracers[j],
+	     ncolumns, E->monitor.elapsed_time);
 
       for(n=1;n<=E->trace.ntracers[j];n++) {
           /* write basic quantities (coordinate) */

@@ -670,10 +670,10 @@ void output_pressure(struct All_variables *E, int cycles)
 
 void output_tracer(struct All_variables *E, int cycles)
 {
-  int i, j, n, ncolumns;
+  int i, j, ncolumns;
   char output_file[255];
   FILE *fp1;
-
+  long int n;
   sprintf(output_file,"%s.tracer.%d.%d", E->control.data_file,
           E->parallel.me, cycles);
   fp1 = output_open(output_file, "w");
@@ -681,8 +681,8 @@ void output_tracer(struct All_variables *E, int cycles)
   ncolumns = 3 + E->trace.number_of_extra_quantities;
 
   for(j=1;j<=E->sphere.caps_per_proc;j++) {
-      fprintf(fp1,"%d %d %d %.5e\n", cycles, E->trace.ntracers[j],
-              ncolumns, E->monitor.elapsed_time);
+    fprintf(fp1,"%d %ld %d %.5e\n", cycles, E->trace.ntracers[j],
+	    ncolumns, E->monitor.elapsed_time);
 
       for(n=1;n<=E->trace.ntracers[j];n++) {
           /* write basic quantities (coordinate) */

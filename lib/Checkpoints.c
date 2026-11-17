@@ -169,8 +169,9 @@ static void read_sentinel(FILE *fp, int me)
 {
     int i, a[4];
     int nonzero = 0;
-
-    fread(a, sizeof(int), 4, fp);
+    int icheck;
+    
+    icheck = fread(a, sizeof(int), 4, fp);
 
     /* check whether a[i] are all zero */
     for(i=0; i<4; i++)
@@ -211,9 +212,9 @@ static void read_general_checkpoint(struct All_variables *E, FILE *fp)
 {
     int tmp[7];
     double dtmp;
-
+    int icheck;
     /* read mesh information */
-    fread(tmp, sizeof(int), 7, fp);
+    icheck = fread(tmp, sizeof(int), 7, fp);
 
     if((tmp[0] != E->lmesh.nox) ||
        (tmp[1] != E->lmesh.noy) ||
@@ -286,10 +287,12 @@ static void read_tracer_checkpoint(struct All_variables *E, FILE *fp)
     void init_strain();
 
     int m, i, itmp;
-
+    int icheck;
+    
     read_sentinel(fp, E->parallel.me);
-
-    fread(&itmp, sizeof(int), 1, fp);
+    
+    icheck = fread(&itmp, sizeof(int), 1, fp);
+    
     if (itmp != E->trace.number_of_basic_quantities) {
         fprintf(stderr, "Error in reading checkpoint file: tracer basicq, me=%d\n",
                 E->parallel.me);
@@ -298,7 +301,7 @@ static void read_tracer_checkpoint(struct All_variables *E, FILE *fp)
 
     }
 
-    fread(&itmp, sizeof(int), 1, fp);
+    icheck = fread(&itmp, sizeof(int), 1, fp);
     if (itmp != E->trace.number_of_extra_quantities) {
         fprintf(stderr, "Error in reading checkpoint file: tracer extraq, me=%d\n",
                 E->parallel.me);
@@ -307,7 +310,7 @@ static void read_tracer_checkpoint(struct All_variables *E, FILE *fp)
 
     }
 
-    fread(&itmp, sizeof(int), 1, fp);
+    icheck = fread(&itmp, sizeof(int), 1, fp);
     if (itmp != E->trace.nflavors) {
         fprintf(stderr, "Error in reading checkpoint file: tracer nflavors, me=%d\n",
                 E->parallel.me);
@@ -316,12 +319,12 @@ static void read_tracer_checkpoint(struct All_variables *E, FILE *fp)
 
     }
 
-    fread(&itmp, sizeof(int), 1, fp);
+    icheck = fread(&itmp, sizeof(int), 1, fp);
     E->trace.ilast_tracer_count = itmp;
 
     /* # of tracers, allocate memory */
     for(m=1; m<=E->sphere.caps_per_proc; m++) {
-        fread(&itmp, sizeof(int), 1, fp);
+      icheck = fread(&itmp, sizeof(int), 1, fp);
         allocate_tracer_arrays(E, m, itmp);
         E->trace.ntracers[m] = itmp;
     }
@@ -329,14 +332,14 @@ static void read_tracer_checkpoint(struct All_variables *E, FILE *fp)
     /* read tracer data */
     for(m=1; m<=E->sphere.caps_per_proc; m++) {
         for(i=0; i<6; i++) {
-            fread(E->trace.basicq[m][i], sizeof(double),
+	  icheck = fread(E->trace.basicq[m][i], sizeof(double),
                   E->trace.ntracers[m]+1, fp);
         }
         for(i=0; i<E->trace.number_of_extra_quantities; i++) {
-            fread(E->trace.extraq[m][i], sizeof(double),
+	  icheck= fread(E->trace.extraq[m][i], sizeof(double),
                   E->trace.ntracers[m]+1, fp);
         }
-        fread(E->trace.ielement[m], sizeof(int),
+        icheck = fread(E->trace.ielement[m], sizeof(int),
               E->trace.ntracers[m]+1, fp);
     }
 
@@ -384,27 +387,28 @@ static void read_composition_checkpoint(struct All_variables *E, FILE *fp)
 {
     double tmp;
     int m, i, itmp;
-
+    int icheck;
+    
     read_sentinel(fp, E->parallel.me);
 
-    fread(&itmp, sizeof(int), 1, fp);
+    icheck = fread(&itmp, sizeof(int), 1, fp);
     if (itmp != E->composition.ncomp) {
         fprintf(stderr, "Error in reading checkpoint file: ncomp, me=%d\n",
                 E->parallel.me);
         fprintf(stderr, "%d\n", itmp);
         exit(-1);
     }
-
-    fread(E->composition.bulk_composition, sizeof(double),
+    
+    icheck = fread(E->composition.bulk_composition, sizeof(double),
           E->composition.ncomp, fp);
 
-    fread(E->composition.initial_bulk_composition, sizeof(double),
+    icheck = fread(E->composition.initial_bulk_composition, sizeof(double),
           E->composition.ncomp, fp);
 
     for(m=1; m<=E->sphere.caps_per_proc; m++) {
         for(i=0; i<E->composition.ncomp; i++)
-            fread(E->composition.comp_el[m][i], sizeof(double),
-                  E->lmesh.nel+1, fp);
+	  icheck = fread(E->composition.comp_el[m][i], sizeof(double),
+			E->lmesh.nel+1, fp);
     }
 
     /* init E->composition.comp_node */

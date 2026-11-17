@@ -102,6 +102,7 @@ struct VISC_OPT {
     int strain_dep_plasticity; 
     float gamma_cr;
     float sig_c; 
+    float siggrd_c;
     float maxD;
 
   int p_stress_state_dependent;	/* 1: for weakening 2: for plasticity */

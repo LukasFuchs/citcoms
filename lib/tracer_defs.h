@@ -54,8 +54,8 @@ struct TRACE{
     double *basicq[13][100];
     double *extraq[13][100];
 
-    int ntracers[13];
-    int max_ntracers[13];
+  long int ntracers[13];
+  long int max_ntracers[13];
     int *ielement[13];
 
     int number_of_tracers;
@@ -95,7 +95,7 @@ struct TRACE{
     int istat_iempty;
     int istat1;
     int istat_elements_checked;
-    int ilast_tracer_count;
+  long int ilast_tracer_count;
 
 
     /* timing information */

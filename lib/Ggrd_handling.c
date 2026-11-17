@@ -563,10 +563,10 @@ void ggrd_read_mat_from_file(struct All_variables *E, int is_geographic)
 	      */
 	      if(E->control.ggrd_mat_is_3d){
 		if(!ggrd_grdtrack_interpolate_rtp((double)rout[0],(double)rout[1],(double)rout[2],
-						  (E->control.ggrd.mat+i1),&indbl,
+						  (E->control.ggrd.mat+i1),&indbl, 
 						  FALSE,shift_to_pos_lon,E->data.radius_km)){
 		  fprintf(stderr,"ggrd_read_mat_from_file: interpolation error at lon: %g lat: %g depth: %g\n",
-			  rout[2]*180/M_PI,90-rout[1]*180/M_PI,(1.0-rout[0]) * 6371.0);
+			  rout[2]*180/M_PI,90-rout[1]*180/M_PI,(1.0-rout[0]) * E->data.radius_km);
 		  parallel_process_termination();
 		}
 
@@ -586,7 +586,7 @@ void ggrd_read_mat_from_file(struct All_variables *E, int is_geographic)
 						   (E->control.ggrd.mat+i2),&indbl2,
 						    FALSE,shift_to_pos_lon,E->data.radius_km)){
 		    fprintf(stderr,"ggrd_read_mat_from_file: interpolation error at lon: %g lat: %g depth: %g\n",
-			    rout[2]*180/M_PI,90-rout[1]*180/M_PI,(1.0-rout[0]) * 6371.0);
+			    rout[2]*180/M_PI,90-rout[1]*180/M_PI,(1.0-rout[0]) * E->data.radius_km);
 		    parallel_process_termination();
 		  }
 		}else{

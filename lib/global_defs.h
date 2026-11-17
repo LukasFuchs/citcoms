@@ -567,6 +567,7 @@ struct CONTROL {
     int sdepv_print_convergence;
 
     int stiff_cont;
+    int cont_grd;
 
 };
 
